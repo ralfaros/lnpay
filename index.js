@@ -1,15 +1,28 @@
 const express = require('express')
-let { bech32, bech32m } = require('bech32')
+let { bech32 } = require('bech32')
 const https = require('https');
 const fs = require('fs');
+const { ApolloClient, HttpLink, InMemoryCache } = require('@apollo/client')
+const fetch = require('node-fetch');
+const { gql } = require('@apollo/client')
+
+
+// FIXME temp. use nginx instead
 const privateKey  = fs.readFileSync('tls.key', 'utf8');
 const certificate = fs.readFileSync('tls.cert', 'utf8');
 var credentials = {key: privateKey, cert: certificate};
 
 
+const uri = 'http://localhost:4000/graphql'
+const client = new ApolloClient({
+  link: new HttpLink({ uri, fetch }),
+  cache: new InMemoryCache()
+});
+
 const app = express()
 const port = 3000
 const baseurl = `https://192.168.1.72:${port}`
+
 
 app.get('/params/', (req, res) => {
   console.log("params request")
@@ -34,7 +47,8 @@ app.get('/params/', (req, res) => {
   res.send(params)
 })
 
-app.get('/invoice/:username', (req, res) => {
+
+app.get('/invoice/:username', async (req, res) => {
   username = req.params.username
   amount = req.query.amount
   console.log({username, amount}, "invoice request")
@@ -42,7 +56,21 @@ app.get('/invoice/:username', (req, res) => {
   // TODO
   // sha256(utf8ByteArray(unescaped_metadata_string))
 
-  const invoice = "lnbc1"
+  let invoice
+
+  try {
+    const mutation = gql`mutation noauthAddInvoice($username:String!) {
+      noauthAddInvoice(username: $username)
+    }`
+  
+    const result = await client.mutate({mutation, variables: {username}})
+    invoice = result.data.noauthAddInvoice
+  } catch (err) {
+    console.log({err}, "error getting invoice")
+    return
+  }
+
+  // const invoice = "lnbc1"
 
   const response = {
     pr: invoice, // bech32-serialized lightning invoice
@@ -57,5 +85,5 @@ let words = bech32.toWords(Buffer.from(link, 'utf8'))
 console.log(bech32.encode('lnurl', words))
 
 
-var httpsServer = https.createServer(credentials, app);
+const httpsServer = https.createServer(credentials, app);
 httpsServer.listen(3000);
