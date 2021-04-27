@@ -1,28 +1,19 @@
 const express = require('express')
 let { bech32 } = require('bech32')
-const https = require('https');
-const fs = require('fs');
 const { ApolloClient, HttpLink, InMemoryCache } = require('@apollo/client')
 const fetch = require('node-fetch');
 const { gql } = require('@apollo/client')
 
+const GRAPHQL_URI = process.env.GRAPHQL_URI ?? 'http://localhost:4000/graphql'
 
-// FIXME temp. use nginx instead
-const privateKey  = fs.readFileSync('tls.key', 'utf8');
-const certificate = fs.readFileSync('tls.cert', 'utf8');
-var credentials = {key: privateKey, cert: certificate};
-
-
-const uri = 'http://localhost:4000/graphql'
 const client = new ApolloClient({
-  link: new HttpLink({ uri, fetch }),
+  link: new HttpLink({ uri: GRAPHQL_URI, fetch }),
   cache: new InMemoryCache()
 });
 
 const app = express()
-const port = 3000
-const baseurl = `https://192.168.1.72:${port}`
-
+const local_port = 3000
+const baseurl = process.env.BASE_URI ?? `https://lnpay.mainnet.galoy.io`
 
 app.get('/params/', (req, res) => {
   console.log("params request")
@@ -50,27 +41,27 @@ app.get('/params/', (req, res) => {
 
 app.get('/invoice/:username', async (req, res) => {
   username = req.params.username
-  amount = req.query.amount
-  console.log({username, amount}, "invoice request")
+  value = Number(req.query.value)
+  console.log({username, value}, "invoice request")
 
-  // TODO
-  // sha256(utf8ByteArray(unescaped_metadata_string))
-
-  let invoice
-
-  try {
-    const mutation = gql`mutation noauthAddInvoice($username:String!) {
-      noauthAddInvoice(username: $username)
-    }`
-  
-    const result = await client.mutate({mutation, variables: {username}})
-    invoice = result.data.noauthAddInvoice
-  } catch (err) {
-    console.log({err}, "error getting invoice")
+  if (!username || !value) {
+    console.log({username, value}, "missing input")
     return
   }
 
-  // const invoice = "lnbc1"
+  let invoice
+  
+  try {
+    const mutation = gql`mutation noauthAddInvoice($username:String!, $value: Int) {
+      noauthAddInvoice(username: $username, value: $value)
+    }`
+  
+    const result = await client.mutate({mutation, variables: {username, value}})
+    invoice = result.data.noauthAddInvoice
+  } catch (err) {
+    console.log({...err, errors: err?.networkError?.result?.errors}, "error getting invoice")
+    return
+  }
 
   const response = {
     pr: invoice, // bech32-serialized lightning invoice
@@ -81,9 +72,8 @@ app.get('/invoice/:username', async (req, res) => {
 })
 
 const link = `${baseurl}/params/?username=123`
+console.log({link})
 let words = bech32.toWords(Buffer.from(link, 'utf8'))
-console.log(bech32.encode('lnurl', words))
+console.log(bech32.encode('lnurl', words, 1024))
 
-
-const httpsServer = https.createServer(credentials, app);
-httpsServer.listen(3000);
+app.listen(local_port, 'localhost', () => console.log(`app launch on http://localhost:3000`))
