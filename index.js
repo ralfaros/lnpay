@@ -12,7 +12,7 @@ const client = new ApolloClient({
 });
 
 const app = express()
-const local_port = 80
+const local_port = 3000
 const baseurl = process.env.BASE_URI ?? `https://lnpay.mainnet.galoy.io`
 
 app.get('/params/', (req, res) => {
@@ -77,4 +77,4 @@ let words = bech32.toWords(Buffer.from(link, 'utf8'))
 console.log(bech32.encode('lnurl', words, 1024))
 
 app.use('/health', require('express-healthcheck')());
-app.listen(local_port, 'localhost', () => console.log(`app launch on http://localhost:3000`))
+app.listen(local_port, 'localhost', () => console.log(`app launch on http://localhost:${local_port}`))
