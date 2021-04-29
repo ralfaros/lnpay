@@ -12,4 +12,4 @@ jobs:
           gcloud_service_key: ${{ secrets.GCLOUD_SERVICE_KEY }}
           registry: gcr.io
           project_id: galoyapp
-          image_name: lnpage
+          image_name: lnpay
