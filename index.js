@@ -12,7 +12,7 @@ const client = new ApolloClient({
 });
 
 const app = express()
-const local_port = 3000
+const local_port = 80
 const baseurl = process.env.BASE_URI ?? `https://lnpay.mainnet.galoy.io`
 
 app.get('/params/', (req, res) => {
