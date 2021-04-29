@@ -76,4 +76,5 @@ console.log({link})
 let words = bech32.toWords(Buffer.from(link, 'utf8'))
 console.log(bech32.encode('lnurl', words, 1024))
 
+app.use('/health', require('express-healthcheck')());
 app.listen(local_port, 'localhost', () => console.log(`app launch on http://localhost:3000`))
